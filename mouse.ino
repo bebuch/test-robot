@@ -147,19 +147,19 @@ void loop() {
   decode_results results;
   if(irrecv.decode(&results)){
     switch(results.value){
-      case 0xD04CFC60ul:
+      case 0xE0E006F9ul:
         chassis.move(action::forward, 120);
       break;
-      case 0x06F89644ul:
+      case 0xE0E046B9ul:
         chassis.move(action::turn_right, 120);
       break;
-      case 0x61DB14E2ul:
+      case 0xE0E08679ul:
         chassis.move(action::backward, 120);
       break;
-      case 0x72726A46ul:
+      case 0xE0E0A659ul:
         chassis.move(action::turn_left, 120);
       break;
-      case 0x20464B24ul:
+      case 0xE0E016E9ul:
         chassis.move(action::none, 0);
       break;
     }
