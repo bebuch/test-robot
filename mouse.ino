@@ -1,3 +1,5 @@
+#include <IRremote.h>
+
 #include "lib/arduino-tools/include/stepper_state_8.hpp"
 
 
@@ -75,6 +77,9 @@ class chassis chassis;
 
 constexpr unsigned microsecond_step = 1000;
 
+constexpr int IR_RECV_PIN = 4;
+IRrecv irrecv(IR_RECV_PIN);
+
 void setup() {
   // motor right
   pinMode( 5, OUTPUT);
@@ -93,6 +98,9 @@ void setup() {
   pinMode(14, INPUT);
   pinMode(15, INPUT);
   pinMode(16, INPUT);
+
+  // Infrared receiver
+  irrecv.enableIRIn();
 
   // init motors by one motor turn
   chassis.move(action::forward, 8);
@@ -134,5 +142,27 @@ void loop() {
   }else if(digitalRead(16) == HIGH){
     chassis.move(action::none, 0);
     delay(100);
+  }
+
+  decode_results results;
+  if(irrecv.decode(&results)){
+    switch(results.value){
+      case 0xD04CFC60ul:
+        chassis.move(action::forward, 120);
+      break;
+      case 0x06F89644ul:
+        chassis.move(action::turn_right, 120);
+      break;
+      case 0x61DB14E2ul:
+        chassis.move(action::backward, 120);
+      break;
+      case 0x72726A46ul:
+        chassis.move(action::turn_left, 120);
+      break;
+      case 0x20464B24ul:
+        chassis.move(action::none, 0);
+      break;
+    }
+    irrecv.resume();
   }
 }
