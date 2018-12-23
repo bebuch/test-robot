@@ -75,8 +75,8 @@ private:
 
 class chassis chassis;
 
-constexpr unsigned microsecond_step = 1000;
-constexpr unsigned min_ir_pause_ms = 500;
+constexpr unsigned long microsecond_step = 900;
+constexpr unsigned long min_ir_pause_ms = 500;
 
 constexpr int IR_RECV_PIN = 4;
 IRrecv irrecv(IR_RECV_PIN);
@@ -105,7 +105,7 @@ void setup() {
 
   // init motors by one motor turn
   chassis.move(action::forward, 8);
-  for(int i = 0; i < 8; ++i){
+  for(char i = 0; i < 8; ++i){
     chassis.step_action();
     delay(1);
   }
