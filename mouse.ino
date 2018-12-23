@@ -68,7 +68,13 @@ public:
     steps_ = steps;
   }
 
+  unsigned step_delay_us(){
+    return max_step_delay_us;
+  }
+
 private:
+  static constexpr unsigned max_step_delay_us = 1000;
+
   unsigned long volatile steps_ = 0;
   action volatile action_ = action::none;
   tools::stepper_state_8<  5,  6,  7,  8 > right_;
@@ -77,7 +83,6 @@ private:
 
 class chassis chassis;
 
-constexpr unsigned long microsecond_step = 1000;
 constexpr unsigned long min_ir_pause_ms = 500;
 
 constexpr int IR_RECV_PIN = 4;
@@ -118,14 +123,14 @@ void setup() {
     TCCR1A = 0;
     TCCR1B = 0;
 
-    TCNT1 = 0xFFFF - microsecond_step * 2; // timer start value
-    TCCR1B |= (1 << CS11);                 // prescale: 8
-    TIMSK1 |= (1 << TOIE1);                // enable timer overflow interrupt
+    TCNT1 = 0xFFFF - chassis.step_delay_us() * 2; // timer start value
+    TCCR1B |= (1 << CS11);                        // prescale: 8
+    TIMSK1 |= (1 << TOIE1);                       // enable timer overflow interrupt
   }
 }
 
 ISR(TIMER1_OVF_vect) {
-  TCNT1 = 0xFFFFu - microsecond_step * 2; // timer start value
+  TCNT1 = 0xFFFFu - chassis.step_delay_us() * 2; // timer start value
   chassis.step_action();
 }
 
