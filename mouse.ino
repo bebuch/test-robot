@@ -33,6 +33,8 @@ public:
   void step_action(){
     auto steps = steps_;
     if(steps == 0){
+      left_.unset();
+      right_.unset();
       return;
     }
 
@@ -75,7 +77,7 @@ private:
 
 class chassis chassis;
 
-constexpr unsigned long microsecond_step = 900;
+constexpr unsigned long microsecond_step = 1000;
 constexpr unsigned long min_ir_pause_ms = 500;
 
 constexpr int IR_RECV_PIN = 4;
