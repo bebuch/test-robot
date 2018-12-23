@@ -76,6 +76,7 @@ private:
 class chassis chassis;
 
 constexpr unsigned microsecond_step = 1000;
+constexpr unsigned min_ir_pause_ms = 500;
 
 constexpr int IR_RECV_PIN = 4;
 IRrecv irrecv(IR_RECV_PIN);
@@ -126,43 +127,55 @@ ISR(TIMER1_OVF_vect) {
   chassis.step_action();
 }
 
-void loop() {
-  if(digitalRead(15) == HIGH){
-    chassis.move(action::turn_right, 3200);
-    delay(100);
-  }else if(digitalRead(13) == HIGH){
-    chassis.move(action::backward, 3200);
-    delay(100);
-  }else if(digitalRead(14) == HIGH){
-    chassis.move(action::forward, 3200);
-    delay(100);
-  }else if(digitalRead(17) == HIGH){
-    chassis.move(action::turn_left, 3200);
-    delay(100);
-  }else if(digitalRead(16) == HIGH){
-    chassis.move(action::none, 0);
-    delay(100);
-  }
+void loop(){
+  unsigned long last_ir_button = 0;
+  unsigned long last_ir_delay = millis();
 
-  decode_results results;
-  if(irrecv.decode(&results)){
-    switch(results.value){
-      case 0xE0E006F9ul:
-        chassis.move(action::forward, 120);
-      break;
-      case 0xE0E046B9ul:
-        chassis.move(action::turn_right, 120);
-      break;
-      case 0xE0E08679ul:
-        chassis.move(action::backward, 120);
-      break;
-      case 0xE0E0A659ul:
-        chassis.move(action::turn_left, 120);
-      break;
-      case 0xE0E016E9ul:
-        chassis.move(action::none, 0);
-      break;
+  for(;;){
+    if(digitalRead(15) == HIGH){
+      chassis.move(action::turn_right, 3200);
+      delay(250);
+    }else if(digitalRead(13) == HIGH){
+      chassis.move(action::backward, 3200);
+      delay(250);
+    }else if(digitalRead(14) == HIGH){
+      chassis.move(action::forward, 3200);
+      delay(250);
+    }else if(digitalRead(17) == HIGH){
+      chassis.move(action::turn_left, 3200);
+      delay(250);
+    }else if(digitalRead(16) == HIGH){
+      chassis.move(action::none, 0);
+      delay(250);
     }
-    irrecv.resume();
+
+    decode_results results;
+    if(irrecv.decode(&results)){
+      unsigned long const now = millis();
+      if(last_ir_button != results.value || last_ir_delay < now){
+        last_ir_delay = now + min_ir_pause_ms;
+        last_ir_button = results.value;
+
+        switch(last_ir_button){
+          case 0xE0E006F9ul:
+            chassis.move(action::forward, 3200);
+          break;
+          case 0xE0E046B9ul:
+            chassis.move(action::turn_right, 3200);
+          break;
+          case 0xE0E08679ul:
+            chassis.move(action::backward, 3200);
+          break;
+          case 0xE0E0A659ul:
+            chassis.move(action::turn_left, 3200);
+          break;
+          case 0xE0E016E9ul:
+            chassis.move(action::none, 0);
+          break;
+        }
+      }
+
+      irrecv.resume();
+    }
   }
 }
