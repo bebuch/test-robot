@@ -44,32 +44,36 @@ public:
     auto steps = steps_;
     auto done_steps = done_steps_;
     if(steps == 0){
-      left_.unset();
-      right_.unset();
+      m1.unset();
+      m2.unset();
+      m3.unset();
       return;
     }
 
     switch(action_){
       case action::forward:
-        left_.prev();
-        right_.prev();
+        m1.next();
+        m2.prev();
       break;
       case action::backward:
-        left_.next();
-        right_.next();
+        m1.prev();
+        m2.next();
       break;
       case action::turn_left:
-        left_.prev();
-        right_.next();
+        m1.next();
+        m2.next();
+        m3.next();
       break;
       case action::turn_right:
-        left_.next();
-        right_.prev();
+        m1.prev();
+        m2.prev();
+        m3.prev();
       break;
     }
 
-    left_.set();
-    right_.set();
+    m1.set();
+    m2.set();
+    m3.set();
 
     --steps;
     ++done_steps;
@@ -82,19 +86,18 @@ public:
   }
 
   unsigned step_delay_us(){
-    constexpr unsigned max_diff = max_step_delay_us - min_step_delay_us;
-    return max_step_delay_us - min(done_steps_, min(steps_, max_diff));
+    return step_delay_us_;
   }
 
 private:
-  static constexpr unsigned max_step_delay_us = 1200;
-  static constexpr unsigned min_step_delay_us = 650;
+  static constexpr unsigned step_delay_us_ = 1000;
 
   unsigned long volatile done_steps_ = 0;
   unsigned long volatile steps_ = 0;
   action volatile action_ = action::none;
-  tools::stepper_state_8<  5,  6,  7,  8 > right_;
-  tools::stepper_state_8<  9, 10, 11, 12 > left_;
+  tools::stepper_state_8<  5,  6,  7,  8 > m1;
+  tools::stepper_state_8<  9, 10, 11, 12 > m2;
+  tools::stepper_state_8< 14, 15, 16, 17 > m3;
 };
 
 class chassis chassis;
@@ -105,23 +108,23 @@ constexpr int IR_RECV_PIN = 4;
 IRrecv irrecv(IR_RECV_PIN);
 
 void setup() {
-  // motor right
+  // motor 1
   pinMode( 5, OUTPUT);
   pinMode( 6, OUTPUT);
   pinMode( 7, OUTPUT);
   pinMode( 8, OUTPUT);
 
-  // motor left
+  // motor 2
   pinMode( 9, OUTPUT);
   pinMode(10, OUTPUT);
   pinMode(11, OUTPUT);
   pinMode(12, OUTPUT);
 
-  // Buttons
-  pinMode(13, INPUT);
-  pinMode(14, INPUT);
-  pinMode(15, INPUT);
-  pinMode(16, INPUT);
+  // motor 3
+  pinMode(14, OUTPUT);
+  pinMode(15, OUTPUT);
+  pinMode(16, OUTPUT);
+  pinMode(17, OUTPUT);
 
   // Infrared receiver
   irrecv.enableIRIn();
@@ -154,63 +157,34 @@ void loop(){
   unsigned long last_ir_button = 0;
   unsigned long last_ir_delay = millis();
 
-  CircularBuffer< action, 64 > movements;
-  bool program_mode = true;
-
   for(;;){
-    if(program_mode){
-      if(digitalRead(15) == HIGH){
-        movements.push(action::turn_right);
-        delay(250);
-      }else if(digitalRead(13) == HIGH){
-        movements.push(action::backward);
-        delay(250);
-      }else if(digitalRead(14) == HIGH){
-        movements.push(action::forward);
-        delay(250);
-      }else if(digitalRead(17) == HIGH){
-        movements.push(action::turn_left);
-        delay(250);
-      }else if(digitalRead(16) == HIGH){
-        program_mode = false;
-        delay(250);
-      }else{
-        decode_results results;
-        if(irrecv.decode(&results)){
-          unsigned long const now = millis();
-          if(last_ir_button != results.value || last_ir_delay < now){
-            last_ir_delay = now + min_ir_pause_ms;
-            last_ir_button = results.value;
+    decode_results results;
+    if(irrecv.decode(&results)){
+      unsigned long const now = millis();
+      if(last_ir_button != results.value || last_ir_delay < now){
+        last_ir_delay = now + min_ir_pause_ms;
+        last_ir_button = results.value;
 
-            switch(last_ir_button){
-              case 0xE0E006F9ul:
-                chassis.move(action::forward, 3200);
-              break;
-              case 0xE0E046B9ul:
-                chassis.move(action::turn_right, 3200);
-              break;
-              case 0xE0E08679ul:
-                chassis.move(action::backward, 3200);
-              break;
-              case 0xE0E0A659ul:
-                chassis.move(action::turn_left, 3200);
-              break;
-              case 0xE0E016E9ul:
-                chassis.move(action::none, 0);
-              break;
-            }
-          }
-
-          irrecv.resume();
+        switch(last_ir_button){
+          case 0xE0E006F9ul:
+            chassis.move(action::forward, 3200);
+          break;
+          case 0xE0E046B9ul:
+            chassis.move(action::turn_right, 3200);
+          break;
+          case 0xE0E08679ul:
+            chassis.move(action::backward, 3200);
+          break;
+          case 0xE0E0A659ul:
+            chassis.move(action::turn_left, 3200);
+          break;
+          case 0xE0E016E9ul:
+            chassis.move(action::none, 0);
+          break;
         }
       }
-    }else{
-      while(movements.size()){
-        chassis.move(movements.pop(), 3200);
-        delay(3500);
-      }
 
-      program_mode = true;
+      irrecv.resume();
     }
   }
 }
